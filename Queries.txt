@@ -1,0 +1,40 @@
+--Q1. The list of water sensors measured by type of it by month
+SELECT d.determ_label, t.month, t.year
+FROM Measurement_Fact m
+JOIN Determinand d ON m.determ_id = d.determ_id
+JOIN Time t ON m.time_id = t.time_id
+GROUP BY d.determ_label, t.month, t.year
+ORDER BY t.year, t.month;
+
+--Q2. The number of sensor measurements collected by type of sensor by week
+SELECT d.determ_label, t.week, t.year, COUNT(m.measurement_id) AS measurement_count
+FROM Measurement_Fact m
+JOIN Determinand d ON m.determ_id = d.determ_id
+JOIN Time t ON m.time_id = t.time_id
+GROUP BY d.determ_label, t.week, t.year
+ORDER BY t.year, t.week;
+
+--Q3. The number of measurements made by location by month
+SELECT l.location_label, t.year, t.month, COUNT(m.measurement_id) AS measurements
+FROM Measurement_Fact m
+JOIN Location l ON m.location_id = l.location_id
+JOIN Time t ON m.time_id = t.time_id
+GROUP BY l.location_label, t.month, t.year
+ORDER BY t.year, t.month;
+
+--Q4. The average number of measurements covered for PH by year
+SELECT t.year, AVG(CASE WHEN d.determ_label = 'pH' THEN 1 ELSE 0 END) AS pH_measurements
+FROM Measurement_Fact m
+JOIN Determinand d ON m.determ_id = d.determ_id
+JOIN Time t ON m.time_id = t.time_id
+GROUP BY t.year
+ORDER BY t.year;
+
+--Q5. The average value of Nitrate measurements by locations by year
+SELECT l.location_label, t.year, AVG(CASE WHEN d.determ_notation = 117 THEN m.result ELSE NULL END) AS avg_Nitrate_value
+FROM Measurement_Fact m
+JOIN Determinand d ON m.determ_id = d.determ_id
+JOIN Location l ON m.location_id = l.location_id
+JOIN Time t ON m.time_id = t.time_id
+GROUP BY l.location_label, t.year
+ORDER BY t.year;

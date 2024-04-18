@@ -1,0 +1,38 @@
+-- In my terminal:  
+conda create —name dw
+conda activate dw
+conda install cx_oracle -y
+conda install jupyter pandas numpy matplotlib -y
+jupyter notebook
+
+-- In my jupyter notebook
+cx_Oracle.init_oracle_client(lib_dir= r".\instantclient-basic-windows.x64-19.9.0.0.0dbru\instantclient_19_9")
+my_username = "fk5774b"
+my_password = "fk5774b"
+# Establishing a connection to the Oracle database
+connection = cx_Oracle.connect(user=my_username, password=my_password, dsn="OBIWAN")
+
+# Creating a cursor
+my_cursor = connection.cursor()
+
+# Executing the query to fetch data from the star schema
+my_cursor.execute("""
+    SELECT d.determ_label, t.week, t.year, COUNT(m.measurement_id) AS measurement_count
+    FROM Measurement_Fact m
+    JOIN Determinand d ON m.determ_id = d.determ_id
+    JOIN Time t ON m.time_id = t.time_id
+    GROUP BY d.determ_label, t.week, t.year
+    ORDER BY t.year, t.week
+""")
+
+
+# Fetching results
+results = my_cursor.fetchall()
+
+# Displaying fetched results
+for row in results:
+    print(row)
+
+# Closing cursor and connection
+my_cursor.close()
+connection.close()

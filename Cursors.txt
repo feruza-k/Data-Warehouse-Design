@@ -1,0 +1,177 @@
+---------------------------------------------
+DECLARE
+    CURSOR populate_time_cursor IS
+        SELECT stage_id, date_time FROM STAGE_TABLE
+        ORDER BY stage_id;
+    rec populate_time_cursor%ROWTYPE; -- Define a record type for cursor fetch
+
+    year_new NUMBER;
+    season_new VARCHAR2(20);
+    month_new NUMBER;
+    month_name_new VARCHAR2(20);
+    week_new NUMBER;
+    day_new NUMBER;
+    hour_new NUMBER;
+    minute_new NUMBER;
+    second_new NUMBER;    
+BEGIN
+    FOR rec IN populate_time_cursor LOOP
+        year_new := EXTRACT(YEAR FROM rec.date_time);
+        month_new := EXTRACT(MONTH FROM rec.date_time);
+        month_name_new := TO_CHAR(rec.date_time, 'Month');
+        IF month_new IN (12, 1, 2) THEN
+            season_new := 'Winter';
+        ELSIF month_new BETWEEN 3 AND 5 THEN
+            season_new := 'Spring';
+        ELSIF month_new BETWEEN 6 AND 8 THEN
+            season_new := 'Summer';
+        ELSE
+            season_new := 'Fall';
+        END IF;
+        week_new := TO_NUMBER(TO_CHAR(rec.date_time, 'WW'));
+        day_new := EXTRACT(DAY FROM rec.date_time);
+        hour_new := EXTRACT(HOUR FROM rec.date_time);
+        minute_new := EXTRACT(MINUTE FROM rec.date_time);
+        second_new := EXTRACT(SECOND FROM rec.date_time);
+
+        -- Inserting into time table with new values
+        INSERT INTO time (time_id, DATE_TIME, YEAR, SEASON, MONTH, MONTH_NAME, WEEK, DAY, HOUR, MINUTE, SECOND)
+        VALUES (rec.stage_id, rec.date_time, year_new, season_new, month_new, month_name_new, 
+        week_new, day_new, hour_new, minute_new, second_new);
+    END LOOP;
+END;
+
+
+-----------------------------------------------------
+
+
+DECLARE
+    CURSOR populate_location_cursor IS
+        SELECT stage_id, location_notation, location_label, easting, northing, location_link 
+        FROM STAGE_TABLE
+        ORDER BY stage_id;
+    rec populate_location_cursor%ROWTYPE; -- Define a record type for cursor fetch 
+    loc_label_new VARCHAR2(70);
+BEGIN
+    FOR rec IN populate_location_cursor LOOP
+        loc_label_new:= INITCAP(LOWER (rec.location_label));
+
+        -- Insert into time table with new values
+        INSERT INTO location ( location_id, location_notation, location_label, easting, northing, location_link)
+        VALUES (rec.stage_id, rec.location_notation, loc_label_new, rec.easting, rec.northing, rec.location_link);
+    END LOOP;
+END;
+
+
+-----------------------------------------------------
+
+DECLARE
+    CURSOR populate_determ_cursor IS
+        SELECT stage_id, determ_notation, determ_label, determ_definition, determ_unit_label
+        FROM STAGE_TABLE
+        ORDER BY stage_id;
+    rec populate_determ_cursor%ROWTYPE; -- Define a record type for cursor fetch 
+BEGIN
+    FOR rec IN populate_determ_cursor LOOP
+        IF rec.determ_unit_label = 'phunits' THEN
+            rec.determ_unit_label := 'pH units';
+        END IF;
+        -- Inserting into determinand dimension with updated values
+        INSERT INTO determinand (determ_id, determ_notation, determ_label, determ_definition, determ_unit_label)
+        VALUES (rec.stage_id, rec.determ_notation, rec.determ_label, rec.determ_definition, rec.determ_unit_label);
+    END LOOP;
+END;
+
+
+-----------------------------------------------------
+
+DECLARE
+    CURSOR populate_sample_cursor IS
+        SELECT stage_id, material_type, purpose, compliance
+        FROM STAGE_TABLE
+        ORDER BY stage_id;
+    rec populate_sample_cursor%ROWTYPE; -- Define a record type for cursor fetch 
+    material_new VARCHAR2(70);
+    purpose_new VARCHAR2(100);
+    compliance_new VARCHAR2(5); 
+BEGIN
+    FOR rec IN populate_sample_cursor LOOP
+        -- Removing spaces before and after slash in material type column
+        material_new := INITCAP(TRIM(REPLACE(rec.material_type, ' / ', '/')));
+        purpose_new := INITCAP(LOWER(rec.purpose));
+
+        IF rec.compliance = '1' THEN
+            compliance_new := 'TRUE';
+        ELSE
+            compliance_new := 'FALSE';
+        END IF;
+        -- Insert into time table with new values
+        INSERT INTO sample (sample_id, material_type, purpose, compliance)
+        VALUES (rec.stage_id, material_new, purpose_new, compliance_new);
+    END LOOP;
+END;
+
+
+
+
+
+
+------------------------------------------------------
+DECLARE
+  CURSOR populate_fact_cursor IS
+    SELECT stage_id, link_id, result, result_qualifier
+    FROM STAGE_TABLE
+    ORDER BY stage_id;
+
+  rec populate_fact_cursor%ROWTYPE; -- Define a record type for cursor fetch
+  result_new NUMBER;
+  qualifier_new VARCHAR2(10); 
+
+  time_id_fact NUMBER; -- To hold the fetched TIME_ID
+  loc_id_fact NUMBER; -- To hold the fetched LOCATION_ID
+  determ_id_fact NUMBER; -- To hold the fetched DETERM_ID
+  sample_id_fact NUMBER; -- To hold the fetched SAMPLE_ID
+BEGIN
+  FOR rec IN populate_fact_cursor LOOP
+    IF INSTR(rec.result, '.') > 0 THEN
+            -- Convert the result to a number and round it to two decimal places
+            result_new := ROUND(TO_NUMBER(rec.result), 2);
+        ELSE
+            -- Use the existing result value as it is if there's no decimal point
+            result_new := rec.result;
+        END IF;
+
+        -- Assign qualifiers based on conditions
+        IF rec.result_qualifier = '<' THEN
+            qualifier_new := 'Below';
+        ELSIF rec.result_qualifier = '>' THEN
+            qualifier_new := 'Above';
+        ELSE
+            qualifier_new := 'Normal';
+        END IF;
+
+    -- Fetch TIME_ID based on date_time from TIME table
+    SELECT time_id INTO time_id_fact
+    FROM time
+    WHERE time_id = rec.stage_id;
+
+    -- Fetch LOCATION_ID based on location_notation from LOCATION table
+    SELECT location_id INTO loc_id_fact
+    FROM location
+    WHERE location_id = rec.stage_id;
+
+    -- Fetch DETERM_ID based on determ_notation from DETERMINAND table
+    SELECT determ_id INTO determ_id_fact
+    FROM determinand
+    WHERE determ_id = rec.stage_id;
+
+    -- Fetch SAMPLE_ID based on material_type from SAMPLE table
+    SELECT sample_id INTO sample_id_fact
+    FROM sample
+    WHERE sample_id = rec.stage_id;
+
+    -- Insert into the measurement_fact table with the fetched IDs
+    INSERT INTO measurement_fact (measurement_id, time_id, location_id, determ_id, sample_id, link_id, result, result_qualifier)
+    VALUES (rec.stage_id, time_id_fact, loc_id_fact, determ_id_fact, sample_id_fact, rec.link_id, result_new, qualifier_new);
+  END LOOP;
+END;

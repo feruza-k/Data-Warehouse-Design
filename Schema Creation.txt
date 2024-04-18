@@ -1,0 +1,66 @@
+-- SCHEMA CREATION: 
+
+CREATE TABLE location(
+location_id NUMBER NOT NULL,  
+location_notation VARCHAR2(20) NOT NULL,  
+location_label VARCHAR2(70) NOT NULL,  
+easting NUMBER(6) NOT NULL,  
+northing NUMBER(6) NOT NULL,  
+location_link VARCHAR2(100), 
+CONSTRAINT loc_id_pk PRIMARY KEY (location_id)
+);
+
+
+CREATE TABLE determinand (	
+determ_id NUMBER NOT NULL,  
+determ_notation NUMBER  NOT NULL, 
+determ_label VARCHAR2(20) NOT NULL, 
+determ_definition VARCHAR2(100) NOT NULL, 
+determ_unit_label VARCHAR2(20 BYTE) NOT NULL, 
+CONSTRAINT determ_id_pk PRIMARY KEY (determ_id)
+);
+
+
+CREATE TABLE sample (
+sample_id NUMBER NOT NULL,  
+material_type VARCHAR2(70) NOT NULL, 
+purpose VARCHAR2(100) NOT NULL, 
+compliance VARCHAR2(5) NOT NULL, 
+CONSTRAINT sample_id_pk PRIMARY KEY (sample_id)
+);
+
+
+  
+CREATE TABLE time (
+time_id NUMBER NOT NULL,  
+date_time TIMESTAMP NOT NULL, 
+year NUMBER NOT NULL,
+season VARCHAR(20) NOT NULL, 
+month NUMBER NOT NULL, 
+month_Name VARCHAR(20) NOT NULL, 
+week NUMBER NOT NULL,  
+day NUMBER NOT NULL,  
+hour NUMBER,  
+minute NUMBER, 
+second NUMBER, 
+CONSTRAINT time_id_pk PRIMARY KEY (time_id)
+);
+
+CREATE TABLE measurement_fact(	
+measurement_id NUMBER NOT NULL,  
+time_id NUMBER NOT NULL,  
+location_id NUMBER NOT NULL, 
+determ_id NUMBER NOT NULL,  
+sample_id NUMBER NOT NULL, 
+link_id VARCHAR2(100), 
+result number, 
+result_qualifier VARCHAR2(10), 
+
+CONSTRAINT fact_id_pk PRIMARY KEY (measurement_id),
+CONSTRAINT time_fk FOREIGN KEY (time_id) REFERENCES time(time_id), 
+CONSTRAINT loc_fk FOREIGN KEY (location_id) REFERENCES location(location_id),
+CONSTRAINT determ_fk FOREIGN KEY (determ_id) REFERENCES determinand(determ_id),
+CONSTRAINT sample_fk FOREIGN KEY (sample_id) REFERENCES sample(sample_id)
+);
+
+
